@@ -1,0 +1,90 @@
+---
+title: "Practical Machine Learning Project"
+author: "Matthew Kruse"
+date: "April 17, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Overview
+The goal of this analysis is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participant and to predict whether barbell lifts were done correctly or incorrectly in 5 different ways.  The 'classe' variable in the training and test sets contains the result of the lift by the particpants.
+
+#### Gather and Explore Data
+```{r loadintor, cache=TRUE}
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv', 'training.csv')
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv', 'test.csv')
+train <- read.csv('training.csv', na.strings=c('NA', '', '#DIV/0!'))
+
+# str(training) showed that we probably don't care about a number of columns so removing them, mainly timestamps, row ids and [new|num]window
+remove_cols <- c('X', 'user_name', 'raw_timestamp_part_1', 'raw_timestamp_part_2', 'cvtd_timestamp', 'new_window', 'num_window')
+train <- train[ , !(names(train) %in% remove_cols)]
+
+# break up the data into a test/training set
+set.seed(1)
+library(caret)
+train_part <- createDataPartition(y=train$classe,p=0.67,list=F)
+training <- train[train_part,]
+testing <- train[-train_part,]
+
+validation <- read.csv('test.csv', na.strings=c('NA', '', '#DIV/0!'))
+validation <- validation[ , !(names(validation) %in% remove_cols)] # remove the same columns from the validation set
+
+plot(training$classe, col="orange", main="Count", xlab="Exercise", ylab="Frequency")
+```
+
+From looking over the raw data, looks like many of the variables are very sparse. Remove anything where the training set has more then 10K NA's
+```{r clean, cache=TRUE}
+keep <- c()
+remove <- c()
+for (name in names(training)) {
+  cnt <- sum(is.na(training[,name]))
+  
+  if (cnt < 10000) {
+    keep <- c(keep, name)
+  }
+  else {
+    remove <- c(remove, name)
+  }
+}
+
+training <- training[, !(names(training) %in% remove)]
+testing <- testing[, !(names(testing) %in% remove)]
+validation <- validation[, !(names(validation) %in% remove)]
+```
+
+Building four models, lda (Latent Dirichlet Allocation), rpart (decision tree), rf (randome forest) and gbm (boosting)
+```{r models, cache=TRUE, results="hide"}
+model1 <- train(classe ~., data=training, method="lda", na.action='na.omit') # Latent Dirichlet Allocation
+model2 <- train(classe ~., data=training, method="rpart", na.action='na.omit') # decision tree
+model3 <- train(classe ~., data=training, method='rf', na.action='na.omit') # random forest
+model4 <- train(classe ~., data=training, method='gbm', na.action='na.omit') # boosting
+
+```
+
+```{r validation, cache=TRUE}
+pred1 <- predict(model1, newdata=testing)
+confusionMatrix(pred1,testing$classe)
+
+pred2 <- predict(model2, newdata=testing)
+confusionMatrix(pred2,testing$classe)
+
+pred3 <- predict(model3, newdata=testing)
+confusionMatrix(pred3,testing$classe)
+
+pred4 <- predict(model4, newdata=testing)
+confusionMatrix(pred4,testing$classe)
+```
+
+Cross validation show a 70.7% prediction rate for the lda, a 49.2% prediction rate for svmLinear, a 99.3% prediction rate for the random forest model, and finally a 96.1% prediction rate for the boosting model.  Based off the data from predicting the testing data set it seems the Random Forest model (model3) is best suited to predict the classe variable.  For this model the expected out of sample error is 0.7%.
+
+
+```{r predict, cache=TRUE}
+pred5 <- predict(model3, validation)
+validation$classe <- predict(model3, validation)
+summary(validation$classe)
+```
+
+Based off the prediction success rate we would expect 1 or fewer of the predictions from the 20 in the validation set to be incorrect.
