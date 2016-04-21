@@ -159,7 +159,7 @@ for (name in names(training)) {
 training &lt;- training[, !(names(training) %in% remove)]
 testing &lt;- testing[, !(names(testing) %in% remove)]
 validation &lt;- validation[, !(names(validation) %in% remove)]</code></pre>
-<p>Building four models, lda (Latent Dirichlet Allocation), rpart (decision tree), rf (randome forest) and gbm (boosting)</p>
+<p>Building four models, lda (Latent Dirichlet Allocation), rpart (decision tree), rf (random forest) and gbm (boosting) Mainly choose boosting and the random forest models as the lectures indicated those typically are the best predictors in prediction contests. The other two are models that the course presented in the lectures. They were also quick to process as compared to the random forest and boosting models.</p>
 <pre class="r"><code>model1 &lt;- train(classe ~., data=training, method=&quot;lda&quot;, na.action='na.omit') # Latent Dirichlet Allocation
 model2 &lt;- train(classe ~., data=training, method=&quot;rpart&quot;, na.action='na.omit') # decision tree
 model3 &lt;- train(classe ~., data=training, method='rf', na.action='na.omit') # random forest
